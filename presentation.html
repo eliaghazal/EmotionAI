@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EmotionAI — Real-Time Emotion Recognition</title>
+
+<!-- Reveal.js core -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+<!-- Code highlighting -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════════════════════
+   EMOTION PALETTE  (Pixar Inside Out inspired)
+   ══════════════════════════════════════════════════════════ */
+:root {
+  --joy:      #FFD700;
+  --sad:      #4A90E2;
+  --angry:    #E53935;
+  --fear:     #AB47BC;
+  --disgust:  #43A047;
+  --surprise: #FF7043;
+  --neutral:  #90A4AE;
+
+  --deep:     #04040F;
+  --mid:      #0A0A20;
+  --panel:    rgba(255,255,255,0.04);
+  --border:   rgba(255,255,255,0.08);
+  --text-dim: rgba(255,255,255,0.55);
+}
+
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+.reveal {
+  font-family: 'Inter', sans-serif;
+  background: var(--deep);
+}
+.reveal .slides section { padding: 0 60px; }
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+.reveal p, .reveal li { font-weight: 300; line-height: 1.7; }
+.reveal pre  { width: 100%; box-shadow: none; margin: 0; }
+.reveal code { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; }
+.reveal pre code { font-size: 0.72em; line-height: 1.55; border-radius: 12px;
+  padding: 20px 24px !important; }
+
+/* ── Chapter tags ── */
+.chapter-tag {
+  display: inline-block;
+  font-size: 0.6em;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--joy);
+  border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 40px;
+  padding: 4px 16px;
+  margin-bottom: 20px;
+}
+
+/* ── Pill labels ── */
+.pill {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 40px;
+  font-size: 0.65em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+@keyframes scan-line {
+  0%   { top: 5%;  opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { top: 95%; opacity: 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1;   }
+}
+
+@keyframes float-in-up {
+  from { transform: translateY(50px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes float-in-left {
+  from { transform: translateX(-60px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes float-in-right {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes counter-up {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bar-reveal {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+@keyframes ring-spin {
+  from { stroke-dashoffset: 502; }
+  to   { stroke-dashoffset: 0;   }
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes particle-rise {
+  0%   { transform: translateY(0) scale(0.5); opacity: 0; }
+  15%  { opacity: 0.8; }
+  85%  { opacity: 0.8; }
+  100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+}
+
+@keyframes heatmap-reveal {
+  0%   { filter: brightness(0); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+  20%, 24%, 55% { opacity: 0.4; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   TITLE SLIDE — facial scan hero
+   ══════════════════════════════════════════════════════════ */
+#slide-title {
+  background: radial-gradient(ellipse at 50% 0%, #1a0a3e 0%, #04040F 65%);
+}
+
+.face-scan-wrapper {
+  position: relative;
+  width: 220px;
+  height: 260px;
+  margin: 0 auto 30px;
+}
+.face-scan-wrapper svg.face-outline { width: 100%; height: 100%; }
+.face-outline path { fill: none; stroke: rgba(74,144,226,0.7); stroke-width: 1.5;
+  filter: drop-shadow(0 0 8px rgba(74,144,226,0.9)); }
+
+.scan-bar {
+  position: absolute;
+  left: 8px; right: 8px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #4AE2C8, transparent);
+  box-shadow: 0 0 12px #4AE2C8, 0 0 30px rgba(74,226,200,0.4);
+  animation: scan-line 2.8s ease-in-out infinite;
+  top: 5%;
+}
+
+.scan-dots {
+  position: absolute;
+  inset: 0;
+}
+.scan-dot {
+  position: absolute;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #4AE2C8;
+  box-shadow: 0 0 8px #4AE2C8;
+  animation: glow-pulse 1.5s ease-in-out infinite;
+}
+
+.title-logo {
+  font-size: 5.5em;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  background: linear-gradient(135deg, #fff 0%, #4AE2C8 40%, #4A90E2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 12px;
+}
+
+.title-subtitle {
+  font-size: 1.05em;
+  font-weight: 300;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 32px;
+}
+
+.title-tags {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.title-tag {
+  font-size: 0.55em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 40px;
+  border: 1px solid;
+}
+
+/* ══════════════════════════════════════════════════════════
+   EMOTION CARDS
+   ══════════════════════════════════════════════════════════ */
+.emotions-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin-top: 24px;
+}
+.emo-card {
+  border-radius: 16px;
+  padding: 18px 8px;
+  text-align: center;
+  border: 1px solid;
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: default;
+  background: rgba(0,0,0,0.3);
+}
+.emo-card:hover {
+  transform: translateY(-6px) scale(1.05);
+}
+.emo-emoji { font-size: 2.2em; display: block; margin-bottom: 8px; }
+.emo-name {
+  font-size: 0.52em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: block;
+}
+.emo-count {
+  font-size: 0.42em;
+  font-weight: 300;
+  color: rgba(255,255,255,0.5);
+  display: block;
+  margin-top: 4px;
+}
+
+/* Each emotion color */
+.emo-happy   { --c: var(--joy);      border-color: rgba(255,215,0,0.35);    }
+.emo-sad     { --c: var(--sad);      border-color: rgba(74,144,226,0.35);   }
+.emo-angry   { --c: var(--angry);    border-color: rgba(229,57,53,0.35);    }
+.emo-fear    { --c: var(--fear);     border-color: rgba(171,71,188,0.35);   }
+.emo-disgust { --c: var(--disgust);  border-color: rgba(67,160,71,0.35);    }
+.emo-surprise{ --c: var(--surprise); border-color: rgba(255,112,67,0.35);   }
+.emo-neutral { --c: var(--neutral);  border-color: rgba(144,164,174,0.35);  }
+.emo-card .emo-name { color: var(--c); }
+.emo-card:hover { box-shadow: 0 0 30px rgba(var(--c-rgb, 255,255,255), 0.25); }
+.emo-happy:hover   { box-shadow: 0 12px 40px rgba(255,215,0,0.25); }
+.emo-sad:hover     { box-shadow: 0 12px 40px rgba(74,144,226,0.25); }
+.emo-angry:hover   { box-shadow: 0 12px 40px rgba(229,57,53,0.25); }
+.emo-fear:hover    { box-shadow: 0 12px 40px rgba(171,71,188,0.25); }
+.emo-disgust:hover { box-shadow: 0 12px 40px rgba(67,160,71,0.25); }
+.emo-surprise:hover{ box-shadow: 0 12px 40px rgba(255,112,67,0.25); }
+.emo-neutral:hover { box-shadow: 0 12px 40px rgba(144,164,174,0.25); }
+
+/* ══════════════════════════════════════════════════════════
+   STAT CARDS
+   ══════════════════════════════════════════════════════════ */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 28px;
+}
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+}
+.stat-number {
+  font-size: 2.8em;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  display: block;
+}
+.stat-label {
+  font-size: 0.55em;
+  font-weight: 400;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 8px;
+  display: block;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PIPELINE / ARCHITECTURE DIAGRAM
+   ══════════════════════════════════════════════════════════ */
+.pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-top: 30px;
+  flex-wrap: nowrap;
+}
+.pipe-step {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  text-align: center;
+  min-width: 110px;
+  flex-shrink: 0;
+}
+.pipe-icon { font-size: 1.8em; display: block; margin-bottom: 6px; }
+.pipe-name {
+  font-size: 0.5em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.8);
+  display: block;
+}
+.pipe-sub {
+  font-size: 0.38em;
+  color: var(--text-dim);
+  display: block;
+  margin-top: 3px;
+}
+.pipe-arrow {
+  font-size: 1.2em;
+  color: rgba(255,255,255,0.25);
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CNN ARCHITECTURE VISUAL
+   ══════════════════════════════════════════════════════════ */
+.arch-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 24px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.arch-block {
+  border-radius: 10px;
+  padding: 14px 12px;
+  text-align: center;
+  min-width: 90px;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+.arch-block .ab-label {
+  font-size: 0.44em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: block;
+}
+.arch-block .ab-sub {
+  font-size: 0.36em;
+  color: rgba(255,255,255,0.45);
+  display: block;
+  margin-top: 3px;
+}
+.ab-input   { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); }
+.ab-block1  { border-color: rgba(100,181,246,0.4); background: rgba(100,181,246,0.08); }
+.ab-block2  { border-color: rgba(171,71,188,0.4);  background: rgba(171,71,188,0.08); }
+.ab-block3  { border-color: rgba(255,112,67,0.4);  background: rgba(255,112,67,0.08); }
+.ab-gap     { border-color: rgba(67,160,71,0.4);   background: rgba(67,160,71,0.08); }
+.ab-dense   { border-color: rgba(255,215,0,0.4);   background: rgba(255,215,0,0.08); }
+.ab-output  { border-color: rgba(76,175,80,0.5);   background: rgba(76,175,80,0.12); }
+
+/* SE badge */
+.se-badge {
+  display: inline-block;
+  font-size: 0.32em;
+  background: rgba(255,215,0,0.15);
+  border: 1px solid rgba(255,215,0,0.4);
+  color: #FFD700;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   TWO-COLUMN LAYOUT
+   ══════════════════════════════════════════════════════════ */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-top: 20px;
+}
+.two-col-6040 { grid-template-columns: 0.6fr 0.4fr; }
+.two-col-4060 { grid-template-columns: 0.4fr 0.6fr; }
+
+/* ══════════════════════════════════════════════════════════
+   ACCURACY BARS
+   ══════════════════════════════════════════════════════════ */
+.acc-bar-group { margin-top: 24px; }
+.acc-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.acc-label {
+  font-size: 0.55em;
+  font-weight: 600;
+  width: 160px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.acc-track {
+  flex: 1;
+  height: 32px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+.acc-fill {
+  height: 100%;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding-right: 12px;
+  justify-content: flex-end;
+  font-size: 0.6em;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: bar-reveal 1.4s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.acc-baseline {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: rgba(255,255,255,0.3);
+}
+
+/* ══════════════════════════════════════════════════════════
+   GRADCAM SLIDE
+   ══════════════════════════════════════════════════════════ */
+.gradcam-demo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+.gradcam-face {
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 20px;
+  text-align: center;
+}
+.gradcam-face .face-emo-name {
+  font-size: 0.55em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+  display: block;
+}
+.face-placeholder {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2em;
+  position: relative;
+  overflow: hidden;
+}
+.heatmap-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: heatmap-reveal 1s 0.5s both;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CHALLENGE CARDS
+   ══════════════════════════════════════════════════════════ */
+.challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 24px;
+}
+.challenge-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+}
+.challenge-card .bug-label {
+  font-size: 0.48em;
+  font-weight: 700;
+  color: var(--angry);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.challenge-card .fix-label {
+  font-size: 0.48em;
+  font-weight: 700;
+  color: var(--disgust);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.challenge-card p {
+  font-size: 0.52em;
+  margin: 6px 0 0;
+  color: rgba(255,255,255,0.75);
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DEMO SLIDE
+   ══════════════════════════════════════════════════════════ */
+.demo-command {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(74,226,200,0.3);
+  border-radius: 12px;
+  padding: 20px 28px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  display: inline-block;
+  margin-top: 24px;
+  position: relative;
+}
+.demo-command .prompt { color: var(--disgust); }
+.demo-command .cmd    { color: #fff; }
+.demo-command .cursor {
+  display: inline-block;
+  width: 10px; height: 1.1em;
+  background: #4AE2C8;
+  vertical-align: text-bottom;
+  animation: blink-cursor 1s step-end infinite;
+}
+
+.demo-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+}
+.demo-feat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+.demo-feat .df-icon { font-size: 1.8em; display: block; margin-bottom: 8px; }
+.demo-feat .df-name {
+  font-size: 0.5em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.8);
+}
+
+/* ══════════════════════════════════════════════════════════
+   SECTION TITLE SLIDES (chapter openers)
+   ══════════════════════════════════════════════════════════ */
+.chapter-opener {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+}
+.chapter-number {
+  font-size: 8em;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0.06;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  letter-spacing: -0.05em;
+  pointer-events: none;
+}
+.chapter-title {
+  font-size: 2.4em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  position: relative;
+}
+.chapter-desc {
+  font-size: 0.7em;
+  color: var(--text-dim);
+  max-width: 500px;
+  margin-top: 16px;
+  line-height: 1.7;
+  position: relative;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SLIDE BACKGROUNDS
+   ══════════════════════════════════════════════════════════ */
+.bg-scan {
+  background: radial-gradient(ellipse at 50% 0%, #0d1a3e 0%, var(--deep) 70%);
+}
+.bg-emotion {
+  background: radial-gradient(ellipse at 80% 20%, #1a0d3e 0%, var(--deep) 60%);
+}
+.bg-data {
+  background: radial-gradient(ellipse at 20% 80%, #0d2a1a 0%, var(--deep) 60%);
+}
+.bg-arch {
+  background: radial-gradient(ellipse at 70% 30%, #1a0d2a 0%, var(--deep) 60%);
+}
+.bg-train {
+  background: radial-gradient(ellipse at 30% 70%, #2a1a0d 0%, var(--deep) 60%);
+}
+.bg-result {
+  background: radial-gradient(ellipse at 50% 50%, #0a2a0a 0%, var(--deep) 60%);
+}
+.bg-demo {
+  background: radial-gradient(ellipse at 50% 0%, #0d1a3e 0%, var(--deep) 65%);
+}
+
+/* ══════════════════════════════════════════════════════════
+   FRAGMENT ANIMATIONS (override Reveal defaults)
+   ══════════════════════════════════════════════════════════ */
+.reveal .fragment.fade-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.5s, transform 0.5s cubic-bezier(0.22,1,0.36,1);
+}
+.reveal .fragment.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ══════════════════════════════════════════════════════════
+   MISC UTILITIES
+   ══════════════════════════════════════════════════════════ */
+.glow-text-cyan  { color: #4AE2C8; text-shadow: 0 0 20px rgba(74,226,200,0.5); }
+.glow-text-blue  { color: #4A90E2; text-shadow: 0 0 20px rgba(74,144,226,0.5); }
+.glow-text-gold  { color: #FFD700; text-shadow: 0 0 20px rgba(255,215,0,0.5); }
+.glow-text-green { color: #43A047; text-shadow: 0 0 20px rgba(67,160,71,0.5); }
+.glow-text-red   { color: #E53935; text-shadow: 0 0 20px rgba(229,57,53,0.5); }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 24px;
+}
+
+.reveal ul { list-style: none; padding: 0; }
+.reveal ul li { padding: 5px 0; font-size: 0.72em; color: rgba(255,255,255,0.8); }
+.reveal ul li::before { content: "→ "; color: #4AE2C8; font-weight: 700; }
+
+/* Slide-level overrides */
+.reveal .slides section.present,
+.reveal .slides section.future,
+.reveal .slides section.past {
+  height: 100vh;
+}
+
+/* Progress bar */
+.reveal .progress { background: rgba(255,255,255,0.05); }
+.reveal .progress span { background: linear-gradient(90deg, #4AE2C8, #4A90E2); }
+
+/* Controls */
+.reveal .controls button { color: rgba(74,226,200,0.6); }
+
+/* ══════════════════════════════════════════════════════════
+   PHASE CARD (transfer learning)
+   ══════════════════════════════════════════════════════════ */
+.phase-card {
+  border-radius: 14px;
+  padding: 22px;
+  border: 1px solid;
+}
+.phase-1 { border-color: rgba(74,144,226,0.4);  background: rgba(74,144,226,0.06); }
+.phase-2 { border-color: rgba(171,71,188,0.4);  background: rgba(171,71,188,0.06); }
+.phase-num {
+  font-size: 0.42em;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+}
+.phase-title {
+  font-size: 0.75em;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: block;
+}
+.phase-detail {
+  font-size: 0.48em;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* Ensemble arrow */
+.ensemble-merge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+.model-bubble {
+  border-radius: 14px;
+  padding: 16px 20px;
+  text-align: center;
+  border: 1px solid;
+  min-width: 130px;
+}
+.mb-cnn     { border-color: rgba(74,144,226,0.5); background: rgba(74,144,226,0.1); }
+.mb-mobile  { border-color: rgba(171,71,188,0.5); background: rgba(171,71,188,0.1); }
+.mb-result  { border-color: rgba(74,226,200,0.5); background: rgba(74,226,200,0.1); }
+.mb-label { font-size: 0.5em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+.mb-acc   { font-size: 0.8em; font-weight: 800; margin-top: 4px; display: block; }
+.merge-arrow { font-size: 1.8em; color: rgba(255,255,255,0.3); }
+.merge-plus  { font-size: 1.4em; color: rgba(255,255,255,0.4); }
+
+</style>
+</head>
+
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 1 — TITLE
+     ══════════════════════════════════════════════════════ -->
+<section id="slide-title" class="bg-scan" data-transition="fade">
+  <canvas id="particles-canvas"
+    style="position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.35;"></canvas>
+
+  <div style="position:relative;z-index:1;padding-top:30px;">
+    <!-- Animated face scan -->
+    <div class="face-scan-wrapper">
+      <!-- Scan line -->
+      <div class="scan-bar"></div>
+      <!-- Corner dots -->
+      <div class="scan-dots">
+        <div class="scan-dot" style="top:8px;left:8px;animation-delay:0s;"></div>
+        <div class="scan-dot" style="top:8px;right:8px;animation-delay:0.4s;"></div>
+        <div class="scan-dot" style="bottom:8px;left:8px;animation-delay:0.8s;"></div>
+        <div class="scan-dot" style="bottom:8px;right:8px;animation-delay:1.2s;"></div>
+      </div>
+      <!-- Face outline SVG -->
+      <svg class="face-outline" viewBox="0 0 220 260" xmlns="http://www.w3.org/2000/svg">
+        <!-- Face shape -->
+        <path d="M110 18 C68 18, 36 50, 36 95 C36 150, 68 185, 110 200
+                 C152 185, 184 150, 184 95 C184 50, 152 18, 110 18 Z"/>
+        <!-- Eyes -->
+        <ellipse cx="80"  cy="100" rx="14" ry="10" fill="none" stroke="rgba(74,226,200,0.6)" stroke-width="1.5"
+          style="filter:drop-shadow(0 0 6px rgba(74,226,200,0.8))"/>
+        <ellipse cx="140" cy="100" rx="14" ry="10" fill="none" stroke="rgba(74,226,200,0.6)" stroke-width="1.5"
+          style="filter:drop-shadow(0 0 6px rgba(74,226,200,0.8))"/>
+        <!-- Pupils -->
+        <circle cx="80"  cy="100" r="4" fill="rgba(74,226,200,0.4)"/>
+        <circle cx="140" cy="100" r="4" fill="rgba(74,226,200,0.4)"/>
+        <!-- Nose -->
+        <path d="M110 110 L101 138 Q110 143 119 138 Z"
+          fill="none" stroke="rgba(74,144,226,0.5)" stroke-width="1.2"/>
+        <!-- Mouth -->
+        <path d="M90 158 Q110 172 130 158"
+          fill="none" stroke="rgba(74,226,200,0.6)" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- Eyebrows -->
+        <path d="M64 85 Q80 78 96 83"
+          fill="none" stroke="rgba(74,144,226,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M124 83 Q140 78 156 85"
+          fill="none" stroke="rgba(74,144,226,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- Corner scan brackets -->
+        <path d="M36 35 L36 18 L55 18" fill="none" stroke="rgba(74,226,200,0.9)" stroke-width="2.5" stroke-linecap="square"/>
+        <path d="M184 35 L184 18 L165 18" fill="none" stroke="rgba(74,226,200,0.9)" stroke-width="2.5" stroke-linecap="square"/>
+        <path d="M36 220 L36 238 L55 238" fill="none" stroke="rgba(74,226,200,0.9)" stroke-width="2.5" stroke-linecap="square"/>
+        <path d="M184 220 L184 238 L165 238" fill="none" stroke="rgba(74,226,200,0.9)" stroke-width="2.5" stroke-linecap="square"/>
+      </svg>
+    </div>
+
+    <h1 class="title-logo">EmotionAI</h1>
+    <p class="title-subtitle">Real-Time Emotion Recognition System</p>
+
+    <div class="title-tags">
+      <span class="title-tag" style="color:#4AE2C8;border-color:rgba(74,226,200,0.3);">OpenCV</span>
+      <span class="title-tag" style="color:#4A90E2;border-color:rgba(74,144,226,0.3);">Custom CNN</span>
+      <span class="title-tag" style="color:#AB47BC;border-color:rgba(171,71,188,0.3);">MobileNetV2</span>
+      <span class="title-tag" style="color:#FFD700;border-color:rgba(255,215,0,0.3);">Ensemble</span>
+      <span class="title-tag" style="color:#FF7043;border-color:rgba(255,112,67,0.3);">Grad-CAM</span>
+      <span class="title-tag" style="color:#43A047;border-color:rgba(67,160,71,0.3);">Flask + SocketIO</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 2 — PROBLEM DEFINITION
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-emotion" data-transition="slide">
+  <span class="chapter-tag">Chapter 01 — The Problem</span>
+  <h2 style="font-size:2em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    Machines are <span class="glow-text-cyan">emotionally blind</span>
+  </h2>
+  <p style="font-size:0.65em;color:var(--text-dim);margin:0 0 28px;max-width:680px;">
+    Humans read emotions effortlessly — a 0.2-second glance is enough.
+    Computers struggle with the same task even with millions of parameters.
+  </p>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+    <div class="card fragment fade-up">
+      <span style="font-size:2em;">🏥</span>
+      <p style="font-size:0.55em;margin-top:10px;"><strong>Mental health</strong><br>
+        Detect distress in therapy sessions, alert clinicians to anxiety spikes</p>
+    </div>
+    <div class="card fragment fade-up" data-fragment-index="1">
+      <span style="font-size:2em;">🚗</span>
+      <p style="font-size:0.55em;margin-top:10px;"><strong>Driver safety</strong><br>
+        Identify drowsiness or frustration before accidents happen</p>
+    </div>
+    <div class="card fragment fade-up" data-fragment-index="2">
+      <span style="font-size:2em;">🎓</span>
+      <p style="font-size:0.55em;margin-top:10px;"><strong>Education</strong><br>
+        Gauge student engagement and adapt teaching in real time</p>
+    </div>
+  </div>
+
+  <div class="card fragment fade-up" style="margin-top:14px;display:flex;align-items:center;gap:20px;" data-fragment-index="3">
+    <span style="font-size:2.2em;flex-shrink:0;">⚠️</span>
+    <p style="font-size:0.58em;margin:0;">
+      <strong style="color:#FFD700;">Why is it hard?</strong> — Same person, different lighting, angle, occlusion.
+      The benchmark dataset (FER2013) has a <strong style="color:#E53935;">~65% human-level accuracy</strong>
+      — the labels themselves are noisy.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 3 — MEET THE 7 EMOTIONS
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-emotion" data-transition="zoom">
+  <span class="chapter-tag">The Cast</span>
+  <h2 style="font-size:1.8em;font-weight:800;letter-spacing:-0.03em;margin:0 0 6px;">
+    Meet the <span class="glow-text-gold">7 Emotions</span>
+  </h2>
+  <p style="font-size:0.6em;color:var(--text-dim);margin:0;">
+    Each emotion has its own color identity — like characters in a story
+  </p>
+
+  <div class="emotions-grid" style="margin-top:20px;">
+    <div class="emo-card emo-happy fragment fade-up" data-fragment-index="0">
+      <span class="emo-emoji">😄</span>
+      <span class="emo-name">Happy</span>
+      <span class="emo-count">8,989 samples</span>
+    </div>
+    <div class="emo-card emo-sad fragment fade-up" data-fragment-index="1">
+      <span class="emo-emoji">😢</span>
+      <span class="emo-name">Sad</span>
+      <span class="emo-count">6,077 samples</span>
+    </div>
+    <div class="emo-card emo-neutral fragment fade-up" data-fragment-index="2">
+      <span class="emo-emoji">😐</span>
+      <span class="emo-name">Neutral</span>
+      <span class="emo-count">6,198 samples</span>
+    </div>
+    <div class="emo-card emo-angry fragment fade-up" data-fragment-index="3">
+      <span class="emo-emoji">😠</span>
+      <span class="emo-name">Angry</span>
+      <span class="emo-count">3,995 samples</span>
+    </div>
+    <div class="emo-card emo-fear fragment fade-up" data-fragment-index="4">
+      <span class="emo-emoji">😨</span>
+      <span class="emo-name">Fear</span>
+      <span class="emo-count">4,097 samples</span>
+    </div>
+    <div class="emo-card emo-surprise fragment fade-up" data-fragment-index="5">
+      <span class="emo-emoji">😲</span>
+      <span class="emo-name">Surprise</span>
+      <span class="emo-count">3,171 samples</span>
+    </div>
+    <div class="emo-card emo-disgust fragment fade-up" data-fragment-index="6">
+      <span class="emo-emoji">🤢</span>
+      <span class="emo-name">Disgust</span>
+      <span class="emo-count" style="color:#E53935;">547 samples ⚠️</span>
+    </div>
+  </div>
+
+  <div class="fragment fade-up card" style="margin-top:16px;display:flex;align-items:center;gap:16px;" data-fragment-index="7">
+    <span style="font-size:1.6em;flex-shrink:0;">⚖️</span>
+    <p style="font-size:0.55em;margin:0;">
+      <strong style="color:#FFD700;">Class imbalance problem:</strong>
+      Happy (8,989) vs Disgust (547) — a 16× gap. Without compensation, the model
+      just predicts "Happy" for everything.
+      <strong style="color:#4AE2C8;"> Fix: balanced class weights via sklearn.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 4 — DATASET STATS
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-data" data-transition="slide">
+  <span class="chapter-tag">Chapter 02 — The Data</span>
+  <h2 style="font-size:2em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    FER2013 <span class="glow-text-green">Dataset</span>
+  </h2>
+  <p style="font-size:0.62em;color:var(--text-dim);">
+    48 × 48 grayscale images scraped from the web — real-world, uncontrolled conditions
+  </p>
+
+  <div class="stat-grid" style="margin-top:22px;">
+    <div class="stat-card fragment fade-up">
+      <span class="stat-number glow-text-cyan">28,709</span>
+      <span class="stat-label">Training images</span>
+    </div>
+    <div class="stat-card fragment fade-up" data-fragment-index="1">
+      <span class="stat-number glow-text-blue">3,589</span>
+      <span class="stat-label">Validation images</span>
+    </div>
+    <div class="stat-card fragment fade-up" data-fragment-index="2">
+      <span class="stat-number glow-text-gold">3,589</span>
+      <span class="stat-label">Test images</span>
+    </div>
+  </div>
+
+  <div class="two-col fragment fade-up" style="margin-top:16px;" data-fragment-index="3">
+    <div class="card">
+      <p style="font-size:0.5em;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:12px;">Key Challenges</p>
+      <ul>
+        <li>48×48 px — barely enough detail</li>
+        <li>Uncontrolled lighting & angles</li>
+        <li>Noisy crowd-sourced labels</li>
+        <li>Severe class imbalance</li>
+      </ul>
+    </div>
+    <div class="card">
+      <p style="font-size:0.5em;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:12px;">Our Fixes</p>
+      <ul>
+        <li>CLAHE contrast normalisation</li>
+        <li>Balanced class weights</li>
+        <li>Label smoothing (ε = 0.1)</li>
+        <li>MixUp data augmentation</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 5 — SYSTEM ARCHITECTURE
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-arch" data-transition="convex">
+  <span class="chapter-tag">Chapter 03 — The System</span>
+  <h2 style="font-size:2em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    Full <span class="glow-text-cyan">Pipeline</span>
+  </h2>
+
+  <div class="pipeline" style="margin-top:30px;">
+    <div class="pipe-step fragment fade-up" data-fragment-index="0" style="border-color:rgba(74,226,200,0.35);">
+      <span class="pipe-icon">📷</span>
+      <span class="pipe-name">Webcam</span>
+      <span class="pipe-sub">BGR frame</span>
+    </div>
+    <div class="pipe-arrow fragment fade-up" data-fragment-index="1">→</div>
+    <div class="pipe-step fragment fade-up" data-fragment-index="1" style="border-color:rgba(74,144,226,0.35);">
+      <span class="pipe-icon">🔍</span>
+      <span class="pipe-name">Face Detect</span>
+      <span class="pipe-sub">OpenCV + CLAHE</span>
+    </div>
+    <div class="pipe-arrow fragment fade-up" data-fragment-index="2">→</div>
+    <div class="pipe-step fragment fade-up" data-fragment-index="2" style="border-color:rgba(74,144,226,0.35);">
+      <span class="pipe-icon">✂️</span>
+      <span class="pipe-name">Crop</span>
+      <span class="pipe-sub">48×48 or 96×96</span>
+    </div>
+    <div class="pipe-arrow fragment fade-up" data-fragment-index="3">→</div>
+    <div class="pipe-step fragment fade-up" data-fragment-index="3" style="border-color:rgba(171,71,188,0.35);">
+      <span class="pipe-icon">🧠</span>
+      <span class="pipe-name">CNN + MobileNet</span>
+      <span class="pipe-sub">Ensemble avg</span>
+    </div>
+    <div class="pipe-arrow fragment fade-up" data-fragment-index="4">→</div>
+    <div class="pipe-step fragment fade-up" data-fragment-index="4" style="border-color:rgba(255,215,0,0.35);">
+      <span class="pipe-icon">🌡️</span>
+      <span class="pipe-name">Temp. Scale</span>
+      <span class="pipe-sub">T = 4.0</span>
+    </div>
+    <div class="pipe-arrow fragment fade-up" data-fragment-index="5">→</div>
+    <div class="pipe-step fragment fade-up" data-fragment-index="5" style="border-color:rgba(74,226,200,0.35);">
+      <span class="pipe-icon">🎭</span>
+      <span class="pipe-name">Annotate</span>
+      <span class="pipe-sub">Emotion + Grad-CAM</span>
+    </div>
+    <div class="pipe-arrow fragment fade-up" data-fragment-index="6">→</div>
+    <div class="pipe-step fragment fade-up" data-fragment-index="6" style="border-color:rgba(67,160,71,0.35);">
+      <span class="pipe-icon">🖥️</span>
+      <span class="pipe-name">Dashboard</span>
+      <span class="pipe-sub">Flask + SocketIO</span>
+    </div>
+  </div>
+
+  <div class="fragment fade-up card" style="margin-top:28px;" data-fragment-index="7">
+    <pre><code class="language-python" style="font-size:0.65em;">
+# core/predictor.py  — one frame, from pixels to emotion
+raw_scores, face_input = self._infer(crop_bgr)   # ensemble + temp scale
+scores      = self._smooth(face_id, raw_scores)  # temporal smoothing
+emotion     = EMOTION_LABELS[np.argmax(scores)]  # "Happy", "Sad", ...
+    </code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 6 — FACE DETECTION
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-scan" data-transition="slide">
+  <span class="chapter-tag">Chapter 04 — Seeing Faces</span>
+  <h2 style="font-size:2em;font-weight:800;letter-spacing:-0.03em;margin:0 0 16px;">
+    Face <span class="glow-text-cyan">Detection</span> with OpenCV
+  </h2>
+
+  <div class="two-col two-col-6040">
+    <pre class="fragment fade-up"><code class="language-python">
+# core/predictor.py
+def _preprocess_for_model(self, crop, model_type):
+    if model_type == "cnn":
+        # Grayscale + CLAHE contrast fix
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        gray = self._clahe.apply(gray)  # webcam → FER2013 distribution
+        resized = cv2.resize(gray, (48, 48))
+        return (resized / 255.0)[..., np.newaxis]  # shape (48,48,1)
+    else:
+        # MobileNetV2: RGB, scale to [-1, 1]
+        resized = cv2.resize(crop, (96, 96))
+        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        return (rgb / 255.0) * 2.0 - 1.0  # shape (96,96,3)
+    </code></pre>
+
+    <div class="fragment fade-up" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card" style="border-color:rgba(74,226,200,0.3);">
+        <span style="font-size:0.5em;font-weight:700;color:#4AE2C8;text-transform:uppercase;letter-spacing:0.1em;">CLAHE</span>
+        <p style="font-size:0.5em;margin-top:6px;">Contrast Limited Adaptive Histogram Equalisation — aligns webcam contrast with FER2013's training distribution</p>
+      </div>
+      <div class="card" style="border-color:rgba(171,71,188,0.3);">
+        <span style="font-size:0.5em;font-weight:700;color:#AB47BC;text-transform:uppercase;letter-spacing:0.1em;">Two preprocessors</span>
+        <p style="font-size:0.5em;margin-top:6px;">CNN gets grayscale [0,1] · MobileNetV2 must get RGB [−1,1] (trained that way — wrong range → 11% accuracy)</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 7 — CUSTOM CNN ARCHITECTURE
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-arch" data-transition="convex">
+  <span class="chapter-tag">Chapter 05 — The Brain</span>
+  <h2 style="font-size:1.9em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    Custom CNN with <span class="glow-text-gold">SE Attention</span>
+  </h2>
+
+  <!-- Architecture flow -->
+  <div class="arch-flow">
+    <div class="arch-block ab-input fragment fade-up" data-fragment-index="0">
+      <span class="ab-label">Input</span>
+      <span class="ab-sub">48×48×1</span>
+    </div>
+    <span class="pipe-arrow fragment fade-up" data-fragment-index="0">→</span>
+    <div class="arch-block ab-block1 fragment fade-up" data-fragment-index="1">
+      <span class="ab-label">Block 1</span>
+      <span class="ab-sub">Conv(64)×2</span>
+      <span class="ab-sub">24×24</span>
+    </div>
+    <span class="pipe-arrow fragment fade-up" data-fragment-index="1">→</span>
+    <div class="arch-block ab-block2 fragment fade-up" data-fragment-index="2">
+      <span class="ab-label">Block 2</span>
+      <span class="ab-sub">ResBlock(128)</span>
+      <span class="se-badge">SE ✦</span>
+      <span class="ab-sub">12×12</span>
+    </div>
+    <span class="pipe-arrow fragment fade-up" data-fragment-index="2">→</span>
+    <div class="arch-block ab-block3 fragment fade-up" data-fragment-index="3">
+      <span class="ab-label">Block 3</span>
+      <span class="ab-sub">ResBlock(256)</span>
+      <span class="se-badge">SE ✦</span>
+      <span class="ab-sub">6×6 ← Grad-CAM</span>
+    </div>
+    <span class="pipe-arrow fragment fade-up" data-fragment-index="3">→</span>
+    <div class="arch-block ab-gap fragment fade-up" data-fragment-index="4">
+      <span class="ab-label">GAP</span>
+      <span class="ab-sub">256 → 256</span>
+    </div>
+    <span class="pipe-arrow fragment fade-up" data-fragment-index="4">→</span>
+    <div class="arch-block ab-dense fragment fade-up" data-fragment-index="5">
+      <span class="ab-label">Dense</span>
+      <span class="ab-sub">512 → ReLU</span>
+    </div>
+    <span class="pipe-arrow fragment fade-up" data-fragment-index="5">→</span>
+    <div class="arch-block ab-output fragment fade-up" data-fragment-index="6">
+      <span class="ab-label">Output</span>
+      <span class="ab-sub">7 classes</span>
+      <span class="ab-sub">softmax</span>
+    </div>
+  </div>
+
+  <div class="two-col fragment fade-up" style="margin-top:20px;" data-fragment-index="7">
+    <pre><code class="language-python" style="font-size:0.62em;">
+# SE Attention — channel gating
+se = layers.GlobalAveragePooling2D()(x)   # squeeze: 12×12×128 → 128
+se = layers.Dense(16, activation="relu")(se)
+se = layers.Dense(128, activation="sigmoid")(se)  # per-channel gate 0–1
+se = layers.Reshape((1, 1, 128))(se)
+x  = layers.Multiply()([x, se])   # excite: amplify important channels
+    </code></pre>
+    <pre><code class="language-python" style="font-size:0.62em;">
+# Residual connection
+shortcut = layers.Conv2D(128, 1, padding="same")(x)
+shortcut = layers.BatchNormalization()(shortcut)
+# ... two 3×3 convolutions + SE ...
+x = layers.Add()([x, shortcut])  # skip connection
+x = layers.ReLU()(x)
+    </code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 8 — TRANSFER LEARNING
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-arch" data-transition="slide">
+  <span class="chapter-tag">Chapter 06 — Standing on Giants</span>
+  <h2 style="font-size:1.9em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    MobileNetV2 <span class="glow-text-cyan">Transfer Learning</span>
+  </h2>
+
+  <div class="two-col" style="margin-top:18px;">
+    <div>
+      <div class="phase-card phase-1 fragment fade-up">
+        <span class="phase-num" style="color:#4A90E2;">Phase 1 — 20 epochs</span>
+        <span class="phase-title">Train the head only</span>
+        <span class="phase-detail">MobileNetV2 base is <strong>frozen</strong>.
+          Only the new Dense(256) → Dense(7) head is updated.
+          LR = 1e-3 (aggressive, safe because base is locked).</span>
+      </div>
+      <div style="text-align:center;font-size:1.5em;padding:8px 0;color:rgba(255,255,255,0.2);">↓</div>
+      <div class="phase-card phase-2 fragment fade-up" data-fragment-index="1">
+        <span class="phase-num" style="color:#AB47BC;">Phase 2 — 40 epochs</span>
+        <span class="phase-title">Fine-tune the top layers</span>
+        <span class="phase-detail">Last 30 layers of MobileNetV2 are <strong>unfrozen</strong>.
+          LR = 1e-5 (tiny — don't destroy ImageNet knowledge).
+          + L2 regularisation + Dropout(0.5).</span>
+      </div>
+    </div>
+    <pre class="fragment fade-up" data-fragment-index="2"><code class="language-python" style="font-size:0.65em;">
+# models/train_transfer.py
+def unfreeze_top_layers(model, cfg):
+    base = model.layers[1]  # MobileNetV2
+    base.trainable = True
+    # Keep the bottom layers frozen
+    for layer in base.layers[:-cfg.unfreeze_layers]:
+        layer.trainable = False
+
+    model.compile(
+        optimizer=Adam(lr=cfg.phase2_lr),  # 1e-5
+        loss=CategoricalCrossentropy(
+            label_smoothing=0.1),
+    )
+
+# Critical preprocessing
+def apply_mobilenet_scale(X):
+    # MobileNetV2 MUST receive [-1, 1]
+    # Using [0,1] → stuck at ~11% accuracy
+    return (X * 2.0 - 1.0).astype(np.float32)
+    </code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 9 — TRAINING PIPELINE
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-train" data-transition="convex">
+  <span class="chapter-tag">Chapter 07 — Teaching the System</span>
+  <h2 style="font-size:1.9em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    Training <span class="glow-text-gold">Pipeline</span>
+  </h2>
+
+  <div class="two-col two-col-6040">
+    <pre class="fragment fade-up"><code class="language-python" style="font-size:0.63em;">
+# utils/dataset_loader.py — tf.data with MixUp
+def build_tf_dataset(X, y, batch_size=64,
+                     augment=True, mixup_alpha=0.2):
+    ds = tf.data.Dataset.from_tensor_slices((X, y))
+    ds = ds.shuffle(10_000, reshuffle_each_iteration=True)
+
+    if augment:
+        def _aug(img, lbl):
+            img = tf.image.random_flip_left_right(img)
+            img = tf.image.random_brightness(img, 0.15)
+            img = tf.image.random_contrast(img, 0.85, 1.15)
+            # Zoom: crop then resize
+            crop_h = tf.random.uniform((), 43, 49, tf.int32)
+            img = tf.image.random_crop(img, [crop_h, crop_h, 1])
+            img = tf.image.resize(img, [48, 48])
+            return tf.clip_by_value(img, 0.0, 1.0), lbl
+        ds = ds.map(_aug, num_parallel_calls=AUTOTUNE)
+
+    ds = ds.batch(batch_size, drop_remainder=True)
+
+    if mixup_alpha > 0:  # MixUp: blend two samples
+        def _mixup(imgs, lbls):
+            lam = tf.random.uniform(())
+            lam = tf.maximum(lam, 1.0 - lam)  # lam ≥ 0.5
+            idx = tf.random.shuffle(tf.range(tf.shape(imgs)[0]))
+            return (lam*imgs + (1-lam)*tf.gather(imgs,idx),
+                    lam*lbls + (1-lam)*tf.gather(lbls,idx))
+        ds = ds.map(_mixup, num_parallel_calls=AUTOTUNE)
+
+    return ds.repeat().prefetch(AUTOTUNE)  # never exhausts
+    </code></pre>
+
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="card fragment fade-up" data-fragment-index="1" style="border-color:rgba(255,112,67,0.35);">
+        <span style="font-size:0.48em;font-weight:700;color:#FF7043;text-transform:uppercase;">MixUp</span>
+        <p style="font-size:0.48em;margin-top:5px;">Blends pairs of images and labels — creates smooth decision boundaries, reduces overfitting</p>
+      </div>
+      <div class="card fragment fade-up" data-fragment-index="2" style="border-color:rgba(255,215,0,0.35);">
+        <span style="font-size:0.48em;font-weight:700;color:#FFD700;text-transform:uppercase;">Label Smoothing</span>
+        <p style="font-size:0.48em;margin-top:5px;">ε = 0.1 prevents overconfident predictions on FER2013's noisy labels</p>
+      </div>
+      <div class="card fragment fade-up" data-fragment-index="3" style="border-color:rgba(74,226,200,0.35);">
+        <span style="font-size:0.48em;font-weight:700;color:#4AE2C8;text-transform:uppercase;">.repeat() Fix</span>
+        <p style="font-size:0.48em;margin-top:5px;">Critical Keras 3.x bug: <code>ImageDataGenerator</code> exhausted every other epoch. <code>tf.data + .repeat()</code> solved it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 10 — ENSEMBLE
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-arch" data-transition="slide">
+  <span class="chapter-tag">Chapter 08 — Two Brains, One Answer</span>
+  <h2 style="font-size:1.9em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    Ensemble + <span class="glow-text-cyan">Temperature Scaling</span>
+  </h2>
+
+  <div class="ensemble-merge fragment fade-up" style="margin-top:20px;">
+    <div class="model-bubble mb-cnn">
+      <div class="mb-label" style="color:#4A90E2;">Custom CNN</div>
+      <span class="mb-acc" style="color:#4A90E2;">~70%</span>
+    </div>
+    <div class="merge-plus">+</div>
+    <div class="model-bubble mb-mobile">
+      <div class="mb-label" style="color:#AB47BC;">MobileNetV2</div>
+      <span class="mb-acc" style="color:#AB47BC;">~66%</span>
+    </div>
+    <div class="merge-arrow">→</div>
+    <div style="text-align:center">
+      <div style="font-size:0.55em;color:var(--text-dim);margin-bottom:6px;">Average probs → Temperature Scale</div>
+      <div class="model-bubble mb-result" style="border-color:rgba(74,226,200,0.6);">
+        <div class="mb-label" style="color:#4AE2C8;">Ensemble</div>
+        <span class="mb-acc glow-text-cyan">~74%</span>
+      </div>
+    </div>
+  </div>
+
+  <pre class="fragment fade-up" style="margin-top:18px;"><code class="language-python" style="font-size:0.65em;">
+# core/predictor.py
+def _infer(self, crop_bgr):
+    face_input = self._preprocess_crop(crop_bgr)
+    probs = self._model.predict(np.expand_dims(face_input, 0))[0]
+
+    if self._ensemble_model is not None:
+        ens_input = self._preprocess_for_model(crop_bgr, self._ensemble_model_type)
+        ens_probs = self._ensemble_model.predict(np.expand_dims(ens_input, 0))[0]
+        probs = (probs + ens_probs) / 2.0    # ← simple average
+
+    # Temperature scaling: soften the distribution (T=4.0)
+    # Without this: "99% Happy" — user sees nothing interesting
+    # With this: "55% Happy, 20% Surprise, 15% Neutral" — full story
+    logits = np.log(np.clip(probs, 1e-7, 1.0))
+    scaled = logits / 4.0
+    exp = np.exp(scaled - scaled.max())
+    return (exp / exp.sum()).astype(np.float32), face_input
+  </code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 11 — GRAD-CAM
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-scan" data-transition="convex">
+  <span class="chapter-tag">Chapter 09 — Making AI Explainable</span>
+  <h2 style="font-size:1.9em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    <span class="glow-text-cyan">Grad-CAM</span>: Where did you look?
+  </h2>
+  <p style="font-size:0.6em;color:var(--text-dim);margin:0 0 18px;">
+    Gradient-weighted Class Activation Maps — visualise which pixels caused the prediction
+  </p>
+
+  <div class="gradcam-demo fragment fade-up">
+    <div class="gradcam-face">
+      <div class="face-placeholder" style="background:radial-gradient(ellipse,rgba(255,215,0,0.4),rgba(255,215,0,0.05));">
+        <span>😄</span>
+        <div class="heatmap-overlay" style="background:radial-gradient(ellipse at 40% 45%,rgba(255,100,0,0.5),transparent 60%)"></div>
+      </div>
+      <span class="face-emo-name" style="color:var(--joy);">Happy</span>
+      <span style="font-size:0.38em;color:var(--text-dim);">Eyes + mouth corners</span>
+    </div>
+    <div class="gradcam-face">
+      <div class="face-placeholder" style="background:radial-gradient(ellipse,rgba(74,144,226,0.4),rgba(74,144,226,0.05));">
+        <span>😢</span>
+        <div class="heatmap-overlay" style="background:radial-gradient(ellipse at 50% 30%,rgba(0,100,255,0.5),transparent 60%)"></div>
+      </div>
+      <span class="face-emo-name" style="color:var(--sad);">Sad</span>
+      <span style="font-size:0.38em;color:var(--text-dim);">Inner eyebrows + eyes</span>
+    </div>
+    <div class="gradcam-face">
+      <div class="face-placeholder" style="background:radial-gradient(ellipse,rgba(229,57,53,0.4),rgba(229,57,53,0.05));">
+        <span>😠</span>
+        <div class="heatmap-overlay" style="background:radial-gradient(ellipse at 50% 20%,rgba(255,50,0,0.6),transparent 55%)"></div>
+      </div>
+      <span class="face-emo-name" style="color:var(--angry);">Angry</span>
+      <span style="font-size:0.38em;color:var(--text-dim);">Furrowed brow region</span>
+    </div>
+  </div>
+
+  <pre class="fragment fade-up" style="margin-top:18px;"><code class="language-python" style="font-size:0.63em;">
+# core/gradcam.py — gradient tape to find important pixels
+with tf.GradientTape() as tape:
+    tape.watch(inp_tensor)
+    conv_outputs, predictions = grad_model(inp_tensor)
+    class_channel = predictions[:, predicted_class]   # e.g. class 3 = Happy
+
+grads      = tape.gradient(class_channel, conv_outputs)
+pooled     = tf.reduce_mean(grads, axis=(0, 1, 2))    # avg importance per channel
+heatmap    = conv_outputs[0] @ pooled[..., tf.newaxis] # weighted feature map
+heatmap    = np.maximum(heatmap, 0)                    # ReLU: keep positive
+heatmap   /= heatmap.max()                             # normalise to [0,1]
+  </code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 12 — PERFORMANCE
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-result" data-transition="slide">
+  <span class="chapter-tag">Chapter 10 — The Results</span>
+  <h2 style="font-size:2em;font-weight:800;letter-spacing:-0.03em;margin:0 0 8px;">
+    <span class="glow-text-green">Performance</span> Evaluation
+  </h2>
+
+  <div class="acc-bar-group" style="margin-top:22px;">
+    <!-- Baseline reference -->
+    <div class="acc-row fragment fade-up" data-fragment-index="0">
+      <span class="acc-label" style="color:var(--text-dim);">Human baseline</span>
+      <div class="acc-track">
+        <div class="acc-fill" style="--bar-width:65%;width:65%;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);">65%</div>
+      </div>
+    </div>
+    <!-- Models before -->
+    <div class="acc-row fragment fade-up" data-fragment-index="1">
+      <span class="acc-label" style="color:#E53935;">CNN (broken)</span>
+      <div class="acc-track">
+        <div class="acc-fill" style="--bar-width:12%;width:12%;background:linear-gradient(90deg,#5c0505,#E53935);">12% ❌</div>
+      </div>
+    </div>
+    <!-- After fixes -->
+    <div class="acc-row fragment fade-up" data-fragment-index="2">
+      <span class="acc-label" style="color:#4A90E2;">Custom CNN</span>
+      <div class="acc-track">
+        <div class="acc-fill" style="--bar-width:71%;width:71%;background:linear-gradient(90deg,#1a3a5c,#4A90E2);">~71%</div>
+      </div>
+    </div>
+    <div class="acc-row fragment fade-up" data-fragment-index="3">
+      <span class="acc-label" style="color:#AB47BC;">MobileNetV2</span>
+      <div class="acc-track">
+        <div class="acc-fill" style="--bar-width:66%;width:66%;background:linear-gradient(90deg,#2a0a3a,#AB47BC);">~66%</div>
+      </div>
+    </div>
+    <div class="acc-row fragment fade-up" data-fragment-index="4">
+      <span class="acc-label glow-text-green">Ensemble ✦</span>
+      <div class="acc-track">
+        <div class="acc-fill" style="--bar-width:74%;width:74%;background:linear-gradient(90deg,#0a2a0a,#43A047);">~74% 🏆</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fragment fade-up card" style="margin-top:18px;border-color:rgba(67,160,71,0.3);" data-fragment-index="5">
+    <p style="font-size:0.55em;text-align:center;margin:0;">
+      ✅ The ensemble surpasses the <strong style="color:#FFD700;">~65% human-level accuracy</strong> benchmark on FER2013 —
+      despite 48×48 images with noisy labels.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 13 — CHALLENGES SOLVED
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-train" data-transition="slide">
+  <span class="chapter-tag">The Bugs That Almost Beat Us</span>
+  <h2 style="font-size:1.9em;font-weight:800;letter-spacing:-0.03em;margin:0 0 16px;">
+    <span class="glow-text-gold">Challenges</span> &amp; Solutions
+  </h2>
+
+  <div class="challenge-grid">
+    <div class="challenge-card fragment fade-up" data-fragment-index="0">
+      <span class="bug-label">🐛 Keras 3.x epoch-boundary bug</span>
+      <p><strong>Symptom:</strong> Every other epoch received only 1 step of data ("ran out of data")</p>
+      <span class="fix-label">✅ Fix</span>
+      <p>Replaced <code>ImageDataGenerator.flow()</code> with <code>tf.data.Dataset.repeat()</code></p>
+    </div>
+    <div class="challenge-card fragment fade-up" data-fragment-index="1">
+      <span class="bug-label">🐛 MobileNetV2 at 11% accuracy</span>
+      <p><strong>Symptom:</strong> Trained for hours, stuck near random chance regardless</p>
+      <span class="fix-label">✅ Fix</span>
+      <p>Model expects <code>[-1, 1]</code> range. Training used <code>[0, 1]</code>. Added <code>x * 2 − 1</code> scaling.</p>
+    </div>
+    <div class="challenge-card fragment fade-up" data-fragment-index="2">
+      <span class="bug-label">🐛 Grad-CAM crash: "slice index out of bounds"</span>
+      <p><strong>Symptom:</strong> <code>predictions[:, 4]</code> failed — "dimension 1 has size 3"</p>
+      <span class="fix-label">✅ Fix</span>
+      <p>Nested model's <code>layer.get_layer().output</code> is disconnected from outer graph. Used <code>layer.output</code> instead.</p>
+    </div>
+    <div class="challenge-card fragment fade-up" data-fragment-index="3">
+      <span class="bug-label">🐛 ReduceLROnPlateau crash at epoch 6</span>
+      <p><strong>Symptom:</strong> <code>TypeError: LearningRateSchedule is not settable</code></p>
+      <span class="fix-label">✅ Fix</span>
+      <p>CosineDecay makes LR non-settable in Keras 3. Removed <code>ReduceLROnPlateau</code> entirely — CosineDecay handles annealing.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 14 — LIVE DEMO
+     ══════════════════════════════════════════════════════ -->
+<section class="bg-demo" data-transition="zoom">
+  <span class="chapter-tag">Chapter 11 — See It Live</span>
+  <h2 style="font-size:2.5em;font-weight:900;letter-spacing:-0.04em;margin:0 0 8px;">
+    <span class="glow-text-cyan">Live Demo</span>
+  </h2>
+  <p style="font-size:0.65em;color:var(--text-dim);">Real-time emotion recognition — running right now</p>
+
+  <div class="demo-command fragment fade-up">
+    <span class="prompt">$</span>
+    <span class="cmd"> python web/app.py</span>
+    <span class="cursor"></span>
+  </div>
+
+  <div class="demo-features" style="margin-top:20px;">
+    <div class="demo-feat fragment fade-up" data-fragment-index="1">
+      <span class="df-icon">🎭</span>
+      <span class="df-name">7 emotion bars per face</span>
+    </div>
+    <div class="demo-feat fragment fade-up" data-fragment-index="2">
+      <span class="df-icon">🔥</span>
+      <span class="df-name">Grad-CAM toggle</span>
+    </div>
+    <div class="demo-feat fragment fade-up" data-fragment-index="3">
+      <span class="df-icon">👤</span>
+      <span class="df-name">Face registration</span>
+    </div>
+    <div class="demo-feat fragment fade-up" data-fragment-index="4">
+      <span class="df-icon">🔄</span>
+      <span class="df-name">Switch CNN ↔ MobileNetV2</span>
+    </div>
+    <div class="demo-feat fragment fade-up" data-fragment-index="5">
+      <span class="df-icon">📊</span>
+      <span class="df-name">Session timeline chart</span>
+    </div>
+    <div class="demo-feat fragment fade-up" data-fragment-index="6">
+      <span class="df-icon">📄</span>
+      <span class="df-name">CSV / PDF export</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     SLIDE 15 — CONCLUSION
+     ══════════════════════════════════════════════════════ -->
+<section data-background-gradient="radial-gradient(ellipse at 50% 0%, #0d1a3e 0%, #04040F 70%)"
+         data-transition="fade">
+  <span class="chapter-tag">Conclusion</span>
+  <h2 style="font-size:2em;font-weight:800;letter-spacing:-0.03em;margin:0 0 24px;">
+    What we <span class="glow-text-gold">built</span>
+  </h2>
+
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:0;">
+    <div class="card fragment fade-up" data-fragment-index="0" style="border-color:rgba(74,226,200,0.3);">
+      <span style="font-size:1.4em;">🧠</span>
+      <p style="font-size:0.55em;margin-top:8px;"><strong>Two AI models</strong> — Custom SE-ResNet CNN (1.35M params) + MobileNetV2 transfer learning, combined as an ensemble</p>
+    </div>
+    <div class="card fragment fade-up" data-fragment-index="1" style="border-color:rgba(255,215,0,0.3);">
+      <span style="font-size:1.4em;">🏆</span>
+      <p style="font-size:0.55em;margin-top:8px;"><strong>~74% ensemble accuracy</strong> — above the ~65% human-level accuracy on FER2013</p>
+    </div>
+    <div class="card fragment fade-up" data-fragment-index="2" style="border-color:rgba(171,71,188,0.3);">
+      <span style="font-size:1.4em;">🔍</span>
+      <p style="font-size:0.55em;margin-top:8px;"><strong>Grad-CAM explainability</strong> — shows which facial region drove each prediction</p>
+    </div>
+    <div class="card fragment fade-up" data-fragment-index="3" style="border-color:rgba(67,160,71,0.3);">
+      <span style="font-size:1.4em;">⚡</span>
+      <p style="font-size:0.55em;margin-top:8px;"><strong>Real-time dashboard</strong> — Flask + SocketIO, face identity, 15 FPS, live export</p>
+    </div>
+  </div>
+
+  <div class="fragment fade-up" style="margin-top:20px;text-align:center;" data-fragment-index="4">
+    <p style="font-size:0.55em;color:var(--text-dim);">Techniques covered</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+      <span class="pill" style="background:rgba(74,226,200,0.1);color:#4AE2C8;border:1px solid rgba(74,226,200,0.3);">SE Attention</span>
+      <span class="pill" style="background:rgba(171,71,188,0.1);color:#AB47BC;border:1px solid rgba(171,71,188,0.3);">Residual Connections</span>
+      <span class="pill" style="background:rgba(74,144,226,0.1);color:#4A90E2;border:1px solid rgba(74,144,226,0.3);">Transfer Learning</span>
+      <span class="pill" style="background:rgba(255,112,67,0.1);color:#FF7043;border:1px solid rgba(255,112,67,0.3);">MixUp Augmentation</span>
+      <span class="pill" style="background:rgba(67,160,71,0.1);color:#43A047;border:1px solid rgba(67,160,71,0.3);">Grad-CAM</span>
+      <span class="pill" style="background:rgba(255,215,0,0.1);color:#FFD700;border:1px solid rgba(255,215,0,0.3);">Ensemble Inference</span>
+      <span class="pill" style="background:rgba(144,164,174,0.1);color:#90A4AE;border:1px solid rgba(144,164,174,0.3);">Temperature Scaling</span>
+    </div>
+  </div>
+
+  <p class="fragment fade-up" style="font-size:0.5em;color:rgba(255,255,255,0.25);text-align:center;margin-top:18px;" data-fragment-index="5">
+    EmotionAI · Computer Vision Final Project
+  </p>
+</section>
+
+</div><!-- .slides -->
+</div><!-- .reveal -->
+
+<!-- ══════════════════════════════════════════════════════
+     SCRIPTS
+     ══════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+
+<script>
+/* ── Reveal.js init ── */
+Reveal.initialize({
+  hash: true,
+  width: 1280,
+  height: 720,
+  margin: 0.06,
+  transition: 'slide',
+  transitionSpeed: 'default',
+  backgroundTransition: 'fade',
+  controls: true,
+  progress: true,
+  slideNumber: 'c/t',
+  plugins: [RevealHighlight, RevealNotes],
+  highlight: { highlightOnLoad: true },
+});
+
+/* ── Particle canvas (title slide) ── */
+(function () {
+  const canvas = document.getElementById('particles-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let W, H, particles;
+  const N = 90;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+
+  function init() {
+    particles = Array.from({ length: N }, () => ({
+      x: rnd(0, W), y: rnd(0, H),
+      vx: rnd(-0.3, 0.3), vy: rnd(-0.3, 0.3),
+      r: rnd(1, 2.5),
+      a: rnd(0.2, 0.8),
+    }));
+  }
+  init();
+
+  // Colour palette: cyan and blue
+  const cols = ['74,226,200', '74,144,226', '171,71,188'];
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw connecting lines
+    for (let i = 0; i < N; i++) {
+      for (let j = i + 1; j < N; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          const alpha = (1 - dist / 120) * 0.25;
+          ctx.strokeStyle = `rgba(74,144,226,${alpha})`;
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw nodes
+    particles.forEach((p, i) => {
+      const col = cols[i % cols.length];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${col},${p.a})`;
+      ctx.fill();
+
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+    });
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ── Animated number counters (stat cards) ── */
+function animateCounters(slideEl) {
+  slideEl.querySelectorAll('.stat-number').forEach(el => {
+    const target = parseInt(el.textContent.replace(/,/g, ''), 10);
+    if (isNaN(target)) return;
+    let current = 0;
+    const step  = Math.ceil(target / 60);
+    const fmt   = n => n.toLocaleString('en-US');
+    el.textContent = '0';
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = fmt(current);
+      if (current >= target) clearInterval(timer);
+    }, 18);
+  });
+}
+
+Reveal.on('slidechanged', ({ currentSlide }) => {
+  animateCounters(currentSlide);
+});
+// Also run on first load if landing on a stat slide
+Reveal.on('ready', ({ currentSlide }) => {
+  animateCounters(currentSlide);
+});
+
+/* ── Accuracy bar animation on slide enter ── */
+Reveal.on('slidechanged', ({ currentSlide }) => {
+  currentSlide.querySelectorAll('.acc-fill').forEach(bar => {
+    const w = bar.style.width;
+    bar.style.width = '0';
+    setTimeout(() => { bar.style.width = w; }, 100);
+  });
+});
+</script>
+</body>
+</html>

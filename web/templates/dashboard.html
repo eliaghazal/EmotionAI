@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EmotionAI — Face & Emotion Recognition</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body>
+
+<!-- ── Top bar ──────────────────────────────────────────────────────────────── -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <span class="brand-icon">🧠</span>
+    <span class="brand-name">EmotionAI</span>
+  </div>
+
+  <div class="topbar-stats">
+    <div class="stat-chip" id="chip-emotion">
+      <span class="chip-label">Dominant</span>
+      <span class="chip-value" id="dominant-emotion">—</span>
+    </div>
+    <div class="stat-chip">
+      <span class="chip-label">Duration</span>
+      <span class="chip-value" id="session-duration">0:00</span>
+    </div>
+    <div class="stat-chip" title="Cumulative face detections this session">
+      <span class="chip-label">Session Faces</span>
+      <span class="chip-value" id="faces-count">0</span>
+    </div>
+    <div class="stat-chip">
+      <span class="chip-label">Confidence</span>
+      <span class="chip-value" id="avg-confidence">—</span>
+    </div>
+  </div>
+
+  <div class="topbar-controls">
+    <div class="toggle-group">
+      <span class="toggle-label">Model</span>
+      <button class="toggle-btn active" id="btn-cnn" onclick="switchModel('cnn')">CNN</button>
+      <button class="toggle-btn" id="btn-mobilenet" onclick="switchModel('mobilenet')">MobileNetV2</button>
+    </div>
+    <button class="icon-btn" id="btn-gradcam" onclick="toggleGradcam()" title="Grad-CAM: highlights which part of your face the model looks at to decide your emotion (red = most important area)">
+      🔥 Grad-CAM
+    </button>
+    <button class="icon-btn export" onclick="exportCSV()" title="Export CSV">
+      ⬇ CSV
+    </button>
+    <button class="icon-btn export" onclick="exportPDF()" title="Export PDF">
+      📄 PDF
+    </button>
+  </div>
+</header>
+
+<!-- ── Main layout ───────────────────────────────────────────────────────────── -->
+<main class="layout">
+
+  <!-- Left: video feed -->
+  <section class="panel video-panel">
+    <div class="panel-header">
+      <span class="panel-title">Live Feed</span>
+      <span class="badge" id="backend-badge">MediaPipe</span>
+    </div>
+    <div class="video-wrapper">
+      <img id="video-feed" src="/video_feed" alt="Live camera feed" />
+      <div id="gradcam-overlay" class="gradcam-overlay hidden">
+        <img id="gradcam-img" src="" alt="Grad-CAM" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Right column -->
+  <aside class="right-col">
+
+    <!-- Timeline chart -->
+    <section class="panel chart-panel">
+      <div class="panel-header">
+        <span class="panel-title">Emotion Timeline</span>
+        <span class="panel-sub">Last 60 s</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="timeline-chart"></canvas>
+      </div>
+    </section>
+
+    <!-- Donut distribution -->
+    <section class="panel chart-panel">
+      <div class="panel-header">
+        <span class="panel-title">Distribution</span>
+        <span class="panel-sub" id="distribution-sub">Session total</span>
+      </div>
+      <div class="chart-container donut-container">
+        <canvas id="donut-chart"></canvas>
+      </div>
+    </section>
+
+  </aside>
+</main>
+
+<!-- ── Known Faces Sidebar ───────────────────────────────────────────────────── -->
+<div class="sidebar" id="faces-sidebar">
+  <div class="sidebar-header">
+    <span>Known Faces</span>
+    <button class="close-btn" onclick="toggleSidebar()">✕</button>
+  </div>
+  <div class="sidebar-content" id="known-faces-list">
+    <p class="empty-state">No registered faces yet.</p>
+  </div>
+</div>
+<button class="fab" onclick="toggleSidebar()" title="Registered faces">👥</button>
+
+<!-- ── Registration Panel ───────────────────────────────────────────────────── -->
+<div class="reg-panel hidden" id="reg-panel">
+  <div class="reg-header">
+    <span class="reg-icon">👤</span>
+    <span class="reg-title">New Face Detected</span>
+    <span class="reg-counter" id="reg-counter">1 of 1</span>
+  </div>
+  <div class="reg-face-wrap">
+    <img id="reg-face-img" src="" alt="Face crop" class="reg-face" />
+    <div class="reg-pulse"></div>
+  </div>
+  <p class="reg-prompt">What's your name?</p>
+  <input type="text" id="reg-name-input" class="reg-input" placeholder="Enter name…" maxlength="64"
+         onkeydown="if(event.key==='Enter') registerFace()" />
+  <div class="reg-actions">
+    <button class="btn-primary" onclick="registerFace()">Remember Me</button>
+    <button class="btn-secondary" onclick="skipFace()">Skip</button>
+  </div>
+</div>
+
+<script src="/static/dashboard.js"></script>
+</body>
+</html>
