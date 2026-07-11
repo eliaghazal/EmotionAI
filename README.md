@@ -179,7 +179,9 @@ Input (96×96×3) — grayscale stacked to RGB
 
 ## Screenshots
 
-> *(Add screenshots of the dashboard, Grad-CAM overlays, and evaluation charts here)*
+<img width="934" height="574" alt="image" src="https://github.com/user-attachments/assets/d59023d0-dedf-4aa3-8b69-f3e98ebd9f0b" />
+<img width="1158" height="630" alt="image" src="https://github.com/user-attachments/assets/57550a83-93b0-4159-854d-10fd1a70a1f3" />
+<img width="1297" height="2448" alt="image" src="https://github.com/user-attachments/assets/8bcade30-f60b-4587-992d-e5d35356b661" />
 
 ---
 
