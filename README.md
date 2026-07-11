@@ -191,3 +191,10 @@ Input (96×96×3) — grayscale stacked to RGB
 - Grad-CAM is automatically disabled when FPS drops below 15 to keep the stream smooth.
 - face_recognition runs in a background thread and caches embeddings per face track to
   avoid recomputing every frame.
+
+---
+
+## Authors
+
+- Elia Ghazal ([@eliaghazal](https://github.com/eliaghazal))
+- George Khayat ([@georgekhayat](https://github.com/georgekhayat))
