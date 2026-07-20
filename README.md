@@ -1,5 +1,7 @@
 # EmotionAI — Face Detection & Emotion Recognition System
 
+> By [Elia Ghazal](https://github.com/eliaghazal) and [Georges El Khayat](https://github.com/georgekhayat)
+
 A professional-grade real-time emotion recognition pipeline built for a university final project.
 Combines a custom CNN and MobileNetV2 transfer learning model with live face detection,
 Grad-CAM explainability, persistent face identity, and a full-featured web dashboard.
